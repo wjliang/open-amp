@@ -269,6 +269,128 @@ static inline int rpmsg_trysend_offchannel(struct rpmsg_endpoint *ept,
 }
 
 /**
+ * @brief Sends a message in tx buffer allocated by
+ *  rpmsg_get_tx_payload_buffer()
+ *
+ * using explicit src/dst addresses.
+ *
+ * This function sends txbuf of length len to the remote dst address,
+ * and uses src as the source address.
+ * The message will be sent to the remote processor which the endpoint
+ * channel belongs to.
+ * The application has to take the responsibility for:
+ *  1. tx buffer allocation (rpmsg_get_tx_payload_buffer() )
+ *  2. filling the data to be sent into the pre-allocated tx buffer
+ *  3. not exceeding the buffer size when filling the data
+ *  4. data cache coherency
+ *
+ * After the rpmsg_send_offchannel_nocopy() function is issued the tx buffer is
+ * no more owned by the sending task and must not be touched anymore unless the
+ * rpmsg_send_offchannel_nocopy() function fails and returns an error. In that
+ * case the application should try to re-issue the
+ * rpmsg_send_offchannel_nocopy() again and if it is still not possible to send
+ * the message and the application wants to give it up from whatever reasons
+ * the rpmsg_release_rx_buffer function could be called, passing the pointer to
+ * the tx buffer to be released as a parameter.
+ *
+ * @param[in] ept   rpmsg endpoint
+ * @param[in] src   Source address
+ * @param[in] dst   Destination address
+ * @param[in] txbuf TX buffer with message filled
+ * @param[in] len   Length of payload
+ *
+ * @return number of bytes it has sent or negative error value on failure.
+ *
+ * @see rpmsg_get_tx_payload_buffer
+ * @see rpmsg_sendto_nocopy
+ * @see rpmsg_send_nocopy
+ */
+int rpmsg_send_offchannel_nocopy(struct rpmsg_endpoint *ept, uint32_t src,
+				 uint32_t dst, void *txbuf, int len);
+
+/**
+ * @brief Sends a message in tx buffer allocated by
+ *  rpmsg_get_tx_payload_buffer()
+ *
+ * across to the remote processor, specify dst.
+ *
+ * This function sends txbuf of length len to the remote dst address.
+ * The message will be sent to the remote processor which the rpdev
+ * channel belongs to, using rpdev's source address.
+ * The application has to take the responsibility for:
+ *  1. tx buffer allocation (rpmsg_get_tx_payload_buffer() )
+ *  2. filling the data to be sent into the pre-allocated tx buffer
+ *  3. not exceeding the buffer size when filling the data
+ *  4. data cache coherency
+ *
+ * After the rpmsg_sendto_nocopy() function is issued the tx buffer is no more
+ * owned by the sending task and must not be touched anymore unless the
+ * rpmsg_sendto_nocopy() function fails and returns an error. In that case the
+ * application should try to re-issue the rpmsg_sendto_nocopy() again and if
+ * it is still not possible to send the message and the application wants to
+ * give it up from whatever reasons the rpmsg_release_rx_buffer function
+ * could be called,
+ * passing the pointer to the tx buffer to be released as a parameter.
+ *
+ * @param[in] ept   rpmsg endpoint
+ * @param[in] txbuf TX buffer with message filled
+ * @param[in] len   Length of payload
+ * @param[in] dst   Destination address
+ *
+ * @return number of bytes it has sent or negative error value on failure.
+ *
+ * @see rpmsg_get_tx_payload_buffer
+ * @see rpmsg_send_offchannel_nocopy
+ * @see rpmsg_send_nocopy
+ */
+static inline
+int rpmsg_sendto_nocopy(struct rpmsg_endpoint *ept, void *txbuf, int len,
+			uint32_t dst)
+{
+	return rpmsg_send_offchannel_nocopy(ept, ept->addr, dst, txbuf, len);
+}
+
+/**
+ * @brief Sends a message in tx buffer allocated by
+ * rpmsg_get_tx_payload_buffer() across to the remote processor.
+ *
+ * This function sends txbuf of length len on the rpdev channel.
+ * The message will be sent to the remote processor which the rpdev
+ * channel belongs to, using rpdev's source and destination addresses.
+ * The application has to take the responsibility for:
+ *  1. tx buffer allocation (rpmsg_get_tx_payload_buffer() )
+ *  2. filling the data to be sent into the pre-allocated tx buffer
+ *  3. not exceeding the buffer size when filling the data
+ *  4. data cache coherency
+ *
+ * After the rpmsg_send_nocopy() function is issued the tx buffer is no more
+ * owned by the sending task and must not be touched anymore unless the
+ * rpmsg_send_nocopy() function fails and returns an error. In that case the
+ * application should try to re-issue the rpmsg_send_nocopy() again and if
+ * it is still not possible to send the message and the application wants to
+ * give it up from whatever reasons the rpmsg_release_rx_buffer function
+ * could be called, passing the pointer to the tx buffer to be released as a
+ * parameter.
+ *
+ * @param[in] ept   rpmsg endpoint
+ * @param[in] txbuf TX buffer with message filled
+ * @param[in] len   Length of payload
+ *
+ * @return 0 on success and an appropriate error value on failure
+ *
+ * @see rpmsg_get_tx_payload_buffer
+ * @see rpmsg_send_offchannel_nocopy
+ * @see rpmsg_sendto_nocopy
+ */
+static inline
+int rpmsg_send_nocopy(struct rpmsg_endpoint *ept, void *txbuf, int len)
+{
+	return rpmsg_send_offchannel_nocopy(ept, ept->addr, ept->dest_addr,
+					    txbuf, len);
+}
+
+
+/**
  * rpmsg_init_ept - initialize rpmsg endpoint
  *
  * Initialize an RPMsg endpoint with a name, source address,
