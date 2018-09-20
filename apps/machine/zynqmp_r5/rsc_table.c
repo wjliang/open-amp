@@ -32,6 +32,12 @@
 
 #define NUM_TABLE_ENTRIES           3
 
+#define IOMMU_READ   (1 << 0)
+#define IOMMU_WRITE  (1 << 1)
+#define IOMMU_CACHE  (1 << 2)
+#define IOMMU_NOEXEC (1 << 3)
+#define IOMMU_MMIO   (1 << 4)
+
 struct remote_resource_table __resource resources = {
 	/* Version */
 	1,
@@ -43,16 +49,21 @@ struct remote_resource_table __resource resources = {
 
 	/* Offsets of rsc entries */
 	{
-	 offsetof(struct remote_resource_table, rproc_mem),
-	 offsetof(struct remote_resource_table, fw_chksum),
+	 offsetof(struct remote_resource_table, ddr),
+	 offsetof(struct remote_resource_table, rpu_glbl_cntr),
 	 offsetof(struct remote_resource_table, rpmsg_vdev),
 	 },
 
-	{RSC_RPROC_MEM, 0x3ed40000, 0x3ed40000, 0x100000, 0},
-
-	/* firmware checksum */
-	{RSC_FW_CHKSUM, "sha256", {0}},
-
+	/* firmware DDR memory */
+	{
+	 RSC_CARVEOUT, 0x3ed00000, 0x3ed00000, 0x40000,
+	 IOMMU_READ | IOMMU_WRITE, 0, "fw-ddr",
+	},
+	/* RPU global control registers */
+	{
+	 RSC_DEVMEM, 0xFF9A0000, 0xFF9A0000, 0x1000,
+	 IOMMU_READ | IOMMU_WRITE, 0, "rpu-cntr",
+	},
 	/* Virtio device entry */
 	{
 	 RSC_VDEV, VIRTIO_ID_RPMSG_, 0, RPMSG_IPU_C0_FEATURES, 0, 0, 0,
