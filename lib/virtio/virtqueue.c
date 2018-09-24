@@ -5,11 +5,11 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-#include <string.h>
-#include <openamp/virtqueue.h>
+#include <metal/alloc.h>
 #include <metal/atomic.h>
 #include <metal/log.h>
-#include <metal/alloc.h>
+#include <openamp/virtqueue.h>
+#include <string.h>
 
 /* Prototype for internal functions. */
 static void vq_ring_init(struct virtqueue *, void *, int);
