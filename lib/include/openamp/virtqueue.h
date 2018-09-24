@@ -195,6 +195,24 @@ void *virtqueue_get_buffer(struct virtqueue *vq, uint32_t *len, uint16_t *idx);
 void *virtqueue_get_available_buffer(struct virtqueue *vq, uint16_t *avail_idx,
 				     uint32_t *len);
 
+/*
+ * virtqueue_get_avail_buf_sg
+ *
+ * get scatter/gather list from available vring
+ *
+ * @vq - virt queue
+ * @sg - pointer to output scatter/gather list
+ * @max_sgs - maximum number of scater/gather list entries
+ * @avail_idx - pointer to where the available index store
+ * @len - pointer to the place to store the returned length
+ *
+ * @return pointer to the head of the scatter/gather list if succeeded,
+ * NULL for failure.
+ */
+struct metal_sg *virtqueue_get_avail_buf_sg(struct virtqueue *vq,
+					    struct metal_sg *sg, int max_sgs,
+					    uint16_t *avail_idx, uint32_t *len);
+
 int virtqueue_add_consumed_buffer(struct virtqueue *vq, uint16_t head_idx,
 				  uint32_t len);
 

@@ -7,6 +7,7 @@
 
 #include <metal/alloc.h>
 #include <metal/atomic.h>
+#include <metal/dma.h>
 #include <metal/log.h>
 #include <openamp/virtqueue.h>
 #include <string.h>
@@ -255,6 +256,66 @@ void *virtqueue_get_available_buffer(struct virtqueue *vq, uint16_t *avail_idx,
 	VQUEUE_IDLE(vq);
 
 	return buffer;
+}
+
+
+struct metal_sg *virtqueue_get_avail_buf_sg(struct virtqueue *vq,
+					    struct metal_sg *sg, int max_sgs,
+					    uint16_t *avail_idx, uint32_t *len)
+{
+	uint16_t head_idx = 0;
+	struct vring_desc *desc;
+	int num_descs, i;
+	uint32_t total_len;
+
+	atomic_thread_fence(memory_order_seq_cst);
+	if (vq->vq_available_idx == vq->vq_ring.avail->idx) {
+		return NULL;
+	}
+
+	VQUEUE_BUSY(vq);
+
+	head_idx = vq->vq_available_idx++ & (vq->vq_nentries - 1);
+	*avail_idx = vq->vq_ring.avail->ring[head_idx];
+
+	desc = &vq->vq_ring.desc[*avail_idx];
+	total_len = 0;
+	if (desc->flags & VRING_DESC_F_INDIRECT) {
+
+		/* Indirect descriptors */
+		if (desc->len % sizeof(*desc)) {
+			/* Invalid size for indirect buffer table */
+			metal_log(METAL_LOG_DEBUG,
+				  "Invalid indirect buffer table size\r\n");
+			VQUEUE_IDLE(vq);
+			*len = 0;
+			return NULL;
+		}
+
+		num_descs = desc->len/sizeof(*desc);
+		desc = virtqueue_phys_to_virt(vq, desc->addr);
+	} else {
+		num_descs = 1;
+	}
+
+	if (num_descs > max_sgs) {
+		metal_log(METAL_LOG_DEBUG,
+			  "avail buffers is larger than max, truncate\r\n");
+		num_descs = max_sgs;
+	}
+	for (i = 0; i < num_descs; i++) {
+		/* TODO: check WRITE flags */
+		sg[i].virt = virtqueue_phys_to_virt(vq, desc->addr);
+		sg[i].len = desc->len;
+		sg[i].io = vq->shm_io;
+		desc++;
+		total_len += sg[i].len;
+	}
+
+	VQUEUE_IDLE(vq);
+	*len = total_len;
+
+	return sg;
 }
 
 /**
