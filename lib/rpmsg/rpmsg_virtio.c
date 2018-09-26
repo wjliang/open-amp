@@ -9,6 +9,7 @@
 
 #include <metal/alloc.h>
 #include <metal/cache.h>
+#include <metal/dma.h>
 #include <metal/sleep.h>
 #include <metal/utilities.h>
 #include <openamp/rpmsg_virtio.h>
@@ -179,6 +180,7 @@ static void *rpmsg_virtio_get_tx_buffer(struct rpmsg_virtio_device *rvdev,
  * @return - pointer to received buffer
  *
  */
+#ifdef VIRTIO_INDIRECT_DESC_N
 static void *rpmsg_virtio_get_rx_buffer(struct rpmsg_virtio_device *rvdev,
 					unsigned long *len,
 					unsigned short *idx)
@@ -211,6 +213,38 @@ static void *rpmsg_virtio_get_rx_buffer(struct rpmsg_virtio_device *rvdev,
 
 	return data;
 }
+#else /* VIRTIO_INDIRECT_DESC_N */
+static void *rpmsg_virtio_get_rx_buffer(struct rpmsg_virtio_device *rvdev,
+					unsigned long *len,
+					unsigned short *idx)
+{
+	unsigned int role = rpmsg_virtio_get_role(rvdev);
+	struct metal_sg sg, *sg_get;
+
+	sg_get = NULL;
+	if (role == RPMSG_REMOTE) {
+		sg_get =
+		    virtqueue_get_avail_buf_sg(rvdev->rvq, &sg, 1,
+					       idx,(uint32_t *)len);
+		*len &= 0xFFFFFFFF;
+	} else {
+		void *data;
+
+		data = virtqueue_get_buffer(rvdev->rvq, (uint32_t *)len, idx);
+		sg.virt = data;
+		sg.io = rvdev->rvq->shm_io;
+		sg.len = (int)((*len) & 0xFFFFFFFF);
+		sg_get = &sg;
+	}
+
+	if (sg_get) {
+		metal_dma_map(NULL, METAL_DMA_DEV_R, &sg, 1, &sg);
+		return sg.virt;
+	} else {
+		return NULL;
+	}
+}
+#endif
 
 #ifndef VIRTIO_MASTER_ONLY
 /**
