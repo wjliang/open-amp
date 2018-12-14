@@ -71,8 +71,8 @@ struct remote_resource_table __resource resources = {
 	 },
 
 	/* Vring rsc entry - part of vdev rsc entry */
-	{RING_TX, VRING_ALIGN, VRING_SIZE, 1, 0},
-	{RING_RX, VRING_ALIGN, VRING_SIZE, 2, 0},
+	{FW_RSC_U32_ADDR_ANY, VRING_ALIGN, VRING_SIZE, 1, 0},
+	{FW_RSC_U32_ADDR_ANY, VRING_ALIGN, VRING_SIZE, 2, 0},
 };
 
 void *get_resource_table (int rsc_id, int *len)
